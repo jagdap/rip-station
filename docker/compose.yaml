@@ -1,0 +1,35 @@
+# UGOS Docker -> Project -> Create. Replace /volume1/media with your media share's
+# real path (File Manager -> right-click the share -> Properties shows its location).
+services:
+  rip-station:
+    image: rip-station:latest
+    container_name: rip-station
+    network_mode: host            # dashboard on :8765; reaches Plex + the LLM on localhost
+    restart: unless-stopped
+    depends_on: [llm]
+    environment:
+      - MAKEMKV_KEY=auto          # fetch/refresh the free beta key; or paste a purchased key
+      - TZ=America/New_York        # your time zone (log timestamps)
+    volumes:
+      - /volume1/docker/rip-station:/config
+      - /volume1/media:/nas
+      - /dev:/dev                 # see drives plugged in later (hot-plug)
+    device_cgroup_rules:
+      - "b 11:* rmw"              # /dev/srN  optical drives
+      - "c 21:* rmw"              # /dev/sgN  SCSI generic, used by MakeMKV
+
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    container_name: rip-station-llm
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8080"     # only rip-station on this NAS can reach it
+    environment:
+      - LLAMA_CACHE=/models
+    volumes:
+      - /volume1/docker/rip-station/models:/models
+    command: >
+      -hf unsloth/Qwen3-4B-Instruct-2507-GGUF:Q4_K_M
+      --alias qwen3-4b-instruct
+      --host 0.0.0.0 --port 8080
+      --ctx-size 8192 --threads 4

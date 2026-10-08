@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rip Station</title>
+<style>
+:root {
+  --bg: #f6f6f4; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e3e2dd;
+  --accent: #2f6fdf; --ok: #2e8b57; --warn: #c77d0a; --bad: #c43d3d; --track: #ecebe6;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #151514; --panel: #1f1f1d; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
+          --accent: #6a9bff; --ok: #5cc28a; --warn: #e5a643; --bad: #ec6b6b; --track: #2b2b28; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+h1 { font-size: 20px; margin: 0 auto 0 0; letter-spacing: -0.01em; }
+h1 .ver { font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 26px 0 10px; }
+.pill { font-size: 12px; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.pill.on::before { content: "● "; color: var(--ok); } .pill.off::before { content: "● "; color: var(--bad); }
+.banner { background: color-mix(in srgb, var(--bad) 14%, var(--panel)); border: 1px solid var(--bad);
+          padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.drive .name { font-weight: 600; } .muted { color: var(--muted); }
+.state { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.state.ripping, .state.scanning { color: var(--accent); } .state.error { color: var(--bad); }
+.state.empty { color: var(--muted); } .state.ejecting { color: var(--warn); }
+.bar { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; margin: 10px 0 4px; }
+.bar > i { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+.empty-note { color: var(--muted); padding: 14px; border: 1px dashed var(--line); border-radius: 10px; }
+.review { display: grid; gap: 12px; }
+.review .top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.review .label { font-weight: 600; font-family: ui-monospace, Menlo, monospace; }
+.reasons { margin: 6px 0 10px; padding-left: 18px; color: var(--warn); font-size: 13px; }
+.cands { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.cand { flex: 0 0 116px; border: 2px solid transparent; border-radius: 8px; padding: 4px; cursor: pointer;
+        background: var(--bg); text-align: left; color: inherit; font: inherit; }
+.cand.sel { border-color: var(--accent); }
+.cand img, .cand .noimg { width: 104px; height: 156px; object-fit: cover; border-radius: 5px; display: block;
+        background: var(--track); }
+.cand .t { font-size: 12px; font-weight: 600; margin-top: 4px; line-height: 1.25; }
+.cand .y { font-size: 11px; color: var(--muted); }
+.cand .llm { font-size: 10px; color: var(--accent); font-weight: 700; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+input, select { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line);
+        border-radius: 6px; padding: 6px 8px; }
+input[type=number] { width: 72px; }
+button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: inherit;
+         border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button:disabled { opacity: .5; cursor: default; }
+table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 10px; overflow: hidden; }
+td { padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+tr:first-child td { border-top: 0; }
+.status { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.status.done { color: var(--ok); } .status.failed { color: var(--bad); } .status.naming, .status.finishing { color: var(--accent); }
+.paths { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); word-break: break-all; }
+.err { color: var(--bad); font-size: 12px; }
+.eps { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; margin-top: 12px;
+       padding: 10px 12px; background: var(--bg); border-radius: 8px; }
+.eps .tl { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.eps select { width: 100%; min-width: 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Rip Station <span class="ver" id="ver"></span></h1>
+    <span class="pill" id="p-llm">LLM</span>
+    <span class="pill" id="p-tmdb">TMDB</span>
+    <span class="pill" id="p-nas">NAS</span>
+  </header>
+  <div id="banner"></div>
+
+  <h2>Drives</h2>
+  <div class="grid" id="drives"></div>
+
+  <h2>Needs a name</h2>
+  <div class="review" id="review"></div>
+
+  <h2>Jobs</h2>
+  <div id="jobs"></div>
+</main>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const mins = s => Math.round(s / 60) + " min";
+let snap = { drives: [], jobs: [], banner: "" };
+const form = {};       // per review job: {kind, sel, season, ep, results, title, year, q}
+let reviewIds = "";
+
+function api(path, opts = {}) {
+  return fetch(path, { headers: { "Content-Type": "application/json" }, ...opts })
+    .then(async r => { const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b.detail || r.statusText); return b; });
+}
+
+function renderDrives() {
+  const el = $("#drives");
+  if (!snap.drives.length) { el.innerHTML = `<div class="empty-note">No DVD drives detected. Plug one in — it shows up within ~10 seconds.</div>`; return; }
+  el.innerHTML = snap.drives.map(d => {
+    const job = snap.jobs.find(j => j.id === d.job_id);
+    const ripping = d.state === "ripping" && job;
+    return `<div class="card drive">
+      <div class="name">${esc(d.name)}</div>
+      <div class="state ${esc(d.state)}">${d.state === "empty" ? "ready — insert a disc" : esc(d.state)}</div>
+      ${ripping ? `<div style="margin-top:6px">${esc(job.label)} <span class="muted">· ${esc(job.kind)} · ${esc(job.current)}</span></div>
+        <div class="bar"><i style="width:${(job.progress * 100).toFixed(1)}%"></i></div>
+        <div class="muted">${(job.progress * 100).toFixed(0)}%</div>`
+      : d.message ? `<div class="muted" style="margin-top:6px">${esc(d.message)}</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function initForm(job) {
+  if (form[job.id]) return form[job.id];
+  const p = job.proposal || {}, c = p.choice || {};
+  const f = form[job.id] = {
+    kind: c.kind || (job.kind === "tv" ? "tv" : "movie"),
+    sel: c.tmdb_id ?? null, llmPick: c.tmdb_id ?? null,
+    season: c.season ?? "", ep: c.first_episode ?? "",
+    results: p.candidates || [], q: "", title: "", year: "",
+    map: {},        // title id -> "season:episode" | "skip"
+  };
+  return f;
+}
+
+const shows = {};   // tmdb id -> {episodes, ripped} | "loading" | {error}
+const epKey = e => `${e.season}:${e.episode}`;
+const epLabel = e => `S${String(e.season).padStart(2,"0")}E${String(e.episode).padStart(2,"0")} · ${e.name || "?"}`;
+
+async function loadShow(tmdbId, jobId) {
+  if (shows[tmdbId]) return;
+  shows[tmdbId] = "loading";
+  try { shows[tmdbId] = await api(`/api/tv/${tmdbId}/episodes`); }
+  catch (err) { shows[tmdbId] = { error: err.message }; }
+  const f = form[jobId], job = snap.jobs.find(j => j.id === jobId);
+  if (f && job && !Object.keys(f.map).length && f.season !== "" && f.ep !== "") fillFrom(f, job, f.season, f.ep);
+  rerenderCard(jobId);
+}
+
+// Assign titles consecutively starting at (season, ep), continuing into the next season.
+function fillFrom(f, job, season, ep) {
+  const show = shows[f.sel]; if (!show || !show.episodes) return false;
+  const order = show.episodes.map(epKey);
+  let i = order.indexOf(`${Number(season)}:${Number(ep)}`);
+  if (i < 0) return false;
+  for (const t of job.titles) f.map[t.id] = order[i++] || "";
+  return true;
+}
+
+function episodePicker(job, f) {
+  const show = shows[f.sel];
+  if (!show || show === "loading") { if (!show) loadShow(f.sel, job.id); return `<div class="muted" style="margin-top:10px">Loading episode list…</div>`; }
+  if (show.error) return `<div class="err" style="margin-top:10px">Couldn't load episodes: ${esc(show.error)}</div>`;
+  const ripped = new Set(show.ripped.map(([s, e]) => `${s}:${e}`));
+  const opts = sel => [`<option value="" ${!sel ? "selected" : ""}>— choose episode —</option>`,
+      `<option value="skip" ${sel === "skip" ? "selected" : ""}>— don't keep this title —</option>`,
+      ...show.episodes.map(e => `<option value="${epKey(e)}" ${sel === epKey(e) ? "selected" : ""}>${esc(epLabel(e))}${e.runtime_min ? ` · ${e.runtime_min}m` : ""}${ripped.has(epKey(e)) ? " · ✓ already ripped" : ""}</option>`)].join("");
+  const rows = job.titles.map(t => `<span class="tl">title ${t.id} · ${mins(t.duration_s)}</span>
+      <select data-ep="${t.id}">${opts(f.map[t.id])}</select>`).join("");
+  return `<div class="eps">${rows}</div>
+    <div class="row"><span class="muted">Fill in order from</span>
+      S <input type="number" min="0" data-f="season" value="${esc(f.season)}">
+      E <input type="number" min="1" data-f="ep" value="${esc(f.ep)}">
+      <button data-fill="${job.id}">Fill</button>
+      <span class="muted">— check against the episode list on the disc case</span></div>`;
+}
+
+function reviewCard(job) {
+  const f = initForm(job), p = job.proposal || {};
+  const reasons = [...(job.warnings || []), ...(p.gate_reasons || []), ...(job.pick_reasons || [])];
+  const durs = job.titles.map(t => mins(t.duration_s)).join(", ");
+  const cands = f.results.length ? f.results.map(c => `
+    <button class="cand ${f.sel === c.tmdb_id ? "sel" : ""}" data-pick="${c.tmdb_id}" data-job="${job.id}" title="${esc(c.overview)}">
+      ${c.poster ? `<img src="${esc(c.poster)}" alt="">` : `<div class="noimg"></div>`}
+      ${f.llmPick === c.tmdb_id ? `<div class="llm">LLM PICK</div>` : ""}
+      <div class="t">${esc(c.title)}</div>
+      <div class="y">${c.year ?? "—"}${c.runtime_min ? " · " + c.runtime_min + " min" : ""}</div>
+    </button>`).join("") : `<div class="muted">No TMDB candidates. Search below or type a title.</div>`;
+  return `<div class="card" data-review="${job.id}">
+    <div class="top">
+      <span class="label">${esc(job.label)}</span>
+      <span class="muted">${job.titles.length} title(s): ${esc(durs)}</span>
+      ${p.choice?.reason ? `<span class="muted">· LLM: ${esc(p.choice.reason)}</span>` : ""}
+    </div>
+    ${reasons.length ? `<ul class="reasons">${reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+    <div class="cands">${cands}</div>
+    ${f.kind === "tv" && f.sel ? episodePicker(job, f) : ""}
+    <div class="row">
+      <select data-f="kind"><option value="movie" ${f.kind==="movie"?"selected":""}>Movie</option><option value="tv" ${f.kind==="tv"?"selected":""}>TV</option></select>
+      <span data-tv style="display:${f.kind==="tv" && !f.sel ? "contents" : "none"}">
+        Season <input type="number" min="0" data-f="season" value="${esc(f.season)}">
+        First ep <input type="number" min="1" data-f="ep" value="${esc(f.ep)}">
+      </span>
+      <input placeholder="Search TMDB…" data-f="q" value="${esc(f.q)}" style="flex:1;min-width:160px">
+      <button data-search="${job.id}">Search</button>
+    </div>
+    <div class="row">
+      <span class="muted">or manual:</span>
+      <input placeholder="Title" data-f="title" value="${esc(f.title)}" style="flex:1;min-width:140px">
+      <input type="number" placeholder="Year" data-f="year" value="${esc(f.year)}">
+      <button class="primary" data-confirm="${job.id}">Confirm</button>
+      <button data-dismiss="${job.id}">Discard</button>
+      <span class="err" data-err></span>
+    </div>
+  </div>`;
+}
+
+function renderReview(force = false) {
+  const jobs = snap.jobs.filter(j => j.status === "review");
+  const ids = jobs.map(j => j.id).join(",");
+  if (!force && ids === reviewIds) return;   // don't clobber inputs while you're typing
+  reviewIds = ids;
+  $("#review").innerHTML = jobs.length ? jobs.map(reviewCard).join("")
+    : `<div class="empty-note">Nothing to review.</div>`;
+}
+
+function rerenderCard(id) {
+  const job = snap.jobs.find(j => j.id === id), el = $(`[data-review="${id}"]`);
+  if (job && el) el.outerHTML = reviewCard(job);
+}
+
+function renderJobs() {
+  const jobs = snap.jobs.filter(j => j.status !== "review");
+  if (!jobs.length) { $("#jobs").innerHTML = `<div class="empty-note">No jobs yet.</div>`; return; }
+  $("#jobs").innerHTML = `<table>${jobs.map(j => {
+    const f = j.final;
+    const eps = f && f.kind === "tv" && f.episodes ? f.episodes.filter(e => !e.skip).map(e => `S${String(e.season).padStart(2,"0")}E${String(e.episode).padStart(2,"0")}`).join(", ")
+      : f && f.kind === "tv" ? `S${String(f.season).padStart(2,"0")}E${String(f.first_episode).padStart(2,"0")}+` : "";
+    const name = f ? `${esc(f.title)}${f.year ? " (" + f.year + ")" : ""}${eps ? " " + eps : ""}` : "";
+    return `<tr>
+      <td class="status ${esc(j.status)}">${esc(j.status)}${j.status === "ripping" ? " " + (j.progress*100).toFixed(0) + "%" : ""}</td>
+      <td><b>${esc(j.label)}</b> <span class="muted">· ${esc(j.kind)} · ${esc(j.drive)}</span>
+        ${name ? `<div>→ ${name}</div>` : ""}
+        ${j.outputs.length ? `<div class="paths">${j.outputs.map(esc).join("<br>")}</div>` : ""}
+        ${(j.warnings || []).map(w => `<div class="err">⚠ ${esc(w)}</div>`).join("")}
+        ${j.error ? `<div class="err">${esc(j.error)}</div>` : ""}</td>
+      <td style="text-align:right;white-space:nowrap">
+        ${j.status === "failed" && j.failed_stage !== "ripping" && j.failed_stage !== "picking" ? `<button data-retry="${j.id}">Retry</button>` : ""}
+        ${["done","failed"].includes(j.status) ? `<button data-dismiss="${j.id}">Clear</button>` : ""}
+      </td></tr>`;
+  }).join("")}</table>`;
+}
+
+function render() {
+  $("#banner").innerHTML = snap.banner ? `<div class="banner">${esc(snap.banner)}</div>` : "";
+  renderDrives(); renderReview(); renderJobs();
+}
+
+document.addEventListener("input", e => {
+  const card = e.target.closest("[data-review]");
+  if (card && e.target.dataset.ep !== undefined) { form[card.dataset.review].map[e.target.dataset.ep] = e.target.value; return; }
+  const key = e.target.dataset.f;
+  if (!card || !key) return;
+  const f = form[card.dataset.review];
+  f[key] = e.target.value;
+  if (key === "kind") { f.sel = null; rerenderCard(card.dataset.review); }
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.dataset.f === "q") e.target.closest("[data-review]").querySelector("[data-search]").click();
+});
+
+document.addEventListener("click", async e => {
+  const t = e.target.closest("button"); if (!t) return;
+  const showErr = (id, msg) => { const el = $(`[data-review="${id}"] [data-err]`); if (el) el.textContent = msg; };
+  if (t.dataset.pick) {
+    const f = form[t.dataset.job]; f.sel = Number(t.dataset.pick); f.map = {};
+    const c = f.results.find(c => c.tmdb_id === f.sel); if (c) f.kind = c.kind;
+    rerenderCard(t.dataset.job);
+  } else if (t.dataset.fill) {
+    const id = t.dataset.fill, f = form[id], job = snap.jobs.find(j => j.id === id);
+    if (!fillFrom(f, job, f.season, f.ep)) showErr(id, `No S${f.season}E${f.ep} in this show`);
+    else rerenderCard(id);
+  } else if (t.dataset.search) {
+    const id = t.dataset.search, f = form[id];
+    if (!f.q) return;
+    try { f.results = await api(`/api/search?kind=${f.kind}&q=${encodeURIComponent(f.q)}`); f.sel = null; rerenderCard(id); }
+    catch (err) { showErr(id, err.message); }
+  } else if (t.dataset.confirm) {
+    const id = t.dataset.confirm, f = form[id];
+    const body = { kind: f.kind };
+    if (f.sel) body.tmdb_id = f.sel; else if (f.title) { body.title = f.title; if (f.year) body.year = Number(f.year); }
+    if (f.kind === "tv" && f.sel && shows[f.sel]?.episodes) {
+      const job = snap.jobs.find(j => j.id === id);
+      const missing = job.titles.filter(t => !f.map[t.id]);
+      if (missing.length) { showErr(id, `Choose an episode (or "don't keep") for title ${missing.map(t => t.id).join(", ")}`); return; }
+      body.episodes = job.titles.map(t => f.map[t.id] === "skip" ? { title_id: t.id, skip: true }
+        : { title_id: t.id, season: Number(f.map[t.id].split(":")[0]), episode: Number(f.map[t.id].split(":")[1]) });
+    } else if (f.kind === "tv") { body.season = f.season === "" ? null : Number(f.season); body.first_episode = f.ep === "" ? null : Number(f.ep); }
+    t.disabled = true;
+    try { await api(`/api/jobs/${id}/name`, { method: "POST", body: JSON.stringify(body) }); delete form[id]; }
+    catch (err) { showErr(id, err.message); t.disabled = false; }
+  } else if (t.dataset.dismiss) {
+    await api(`/api/jobs/${t.dataset.dismiss}`, { method: "DELETE" }).catch(err => alert(err.message));
+  } else if (t.dataset.retry) {
+    t.disabled = true;
+    await api(`/api/jobs/${t.dataset.retry}/retry`, { method: "POST" }).catch(err => alert(err.message));
+  }
+});
+
+async function health() {
+  try {
+    const s = await api("/api/state");
+    for (const k of ["llm", "tmdb", "nas"]) $("#p-" + k).className = "pill " + (s[k] ? "on" : "off");
+    $("#ver").textContent = s.version || "";
+  } catch {}
+}
+
+const es = new EventSource("/events");
+es.onmessage = e => { snap = JSON.parse(e.data); render(); };
+health(); setInterval(health, 30000);
+</script>
+</body>
+</html>

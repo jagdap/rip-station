@@ -1,0 +1,36 @@
+# Rip Station on the NAS. Edit this file in the config folder, then restart the container.
+
+[makemkv]
+binary = "/usr/bin/makemkvcon"
+minlength = 300
+address = "dev"
+
+[paths]
+# /nas is the media share. Staging lives on the same share so finished rips are
+# *moved* into place instantly instead of copied.
+staging = "/nas/.rip-staging"
+data = "/config/data"
+nas_root = "/nas/media/dvds"
+nas_is_network_mount = false   # running on the NAS: the media folder is local
+movies_dir = "Movies"
+tv_dir = "TV"
+
+[tmdb]
+key = ""            # themoviedb.org -> Settings -> API
+
+[llm]
+enabled = true
+base_url = "http://127.0.0.1:8081/v1"   # the rip-station-llm container
+model = "qwen3-4b-instruct"
+timeout_s = 180                          # CPU inference is slower than MLX
+
+[plex]
+url = "http://127.0.0.1:32400"
+token = ""          # optional: enables instant library refresh
+
+[server]
+host = "0.0.0.0"    # reachable at http://<nas>:8765 on your home network (no login)
+port = 8765
+
+# "none", or an ntfy topic URL for phone notifications, e.g. "https://ntfy.sh/<random-name>"
+notify = "none"

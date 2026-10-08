@@ -1,0 +1,29 @@
+# Copy to config.toml and fill in.
+
+[makemkv]
+binary = "/Applications/MakeMKV.app/Contents/MacOS/makemkvcon"
+minlength = 300        # seconds; titles shorter than this are ignored
+address = "dev"        # "dev" (device path) or "disc" (makemkv index) — decided in Phase 0
+
+[paths]
+staging = "staging"            # local rip scratch space (SSD)
+data = "data"                  # job state + decisions.jsonl
+nas_root = "/Volumes/Media"    # mounted NAS share
+movies_dir = "Movies"
+tv_dir = "TV"
+
+[tmdb]
+key = ""               # themoviedb.org -> Settings -> API
+
+[llm]
+enabled = true
+base_url = "http://127.0.0.1:8080/v1"
+model = "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+
+[plex]
+url = ""               # e.g. http://<plex-host>:32400 (optional)
+token = ""             # optional; enables instant library refresh
+
+[server]
+host = "127.0.0.1"
+port = 8765
