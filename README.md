@@ -121,3 +121,8 @@ On a Mac, any OpenAI-compatible server works for the LLM, e.g.
 
 State lives in `data/`: `jobs.json` (survives restarts), `decisions.jsonl` (every
 naming decision, useful as an eval set) and `scans/` (raw MakeMKV output for each disc).
+
+## License
+MIT for Rip Station's own code (see `LICENSE`). MakeMKV, llama.cpp and the Qwen model
+are separate projects under their own licenses; none of them are included in this
+repository.
