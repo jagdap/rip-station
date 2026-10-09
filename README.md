@@ -68,6 +68,11 @@ discs still rip, but they all go to review.
 - **Dashboard:** one card per drive, a review queue, and recent jobs. The header shows
   the version and build time, so after an update you can tell the new image is
   running.
+- **Phones and tablets:** the dashboard is built for touch screens. In iOS Safari use
+  Share → Add to Home Screen for an app-like icon. It reconnects by itself when you come
+  back to it, shows "reconnecting…" if the NAS is unreachable, and the tab title shows
+  progress at a glance, e.g. "(1) 57% · Rip Station" (one disc waiting for review, one rip
+  at 57%).
 - **Review:** anything not certain lands here with the best guess preselected. Fix it
   with the search box, then Confirm. For TV, each ripped title gets its own episode
   dropdown, and "Fill in order from S__ E__" fills them sequentially.

@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rip Station">
+<meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151514" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%232f6fdf'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23fff'/%3E%3C/svg%3E">
 <title>Rip Station</title>
 <style>
 :root {
@@ -14,9 +20,12 @@
           --accent: #6a9bff; --ok: #5cc28a; --warn: #e5a643; --bad: #ec6b6b; --track: #2b2b28; }
 }
 * { box-sizing: border-box; }
+html { color-scheme: light dark; -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink);
        font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
-main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+main { max-width: 1100px; margin: 0 auto;
+       padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+                calc(60px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
 header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
 h1 { font-size: 20px; margin: 0 auto 0 0; letter-spacing: -0.01em; }
 h1 .ver { font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
@@ -36,7 +45,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: v
 .empty-note { color: var(--muted); padding: 14px; border: 1px dashed var(--line); border-radius: 10px; }
 .review { display: grid; gap: 12px; }
 .review .top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
-.review .label { font-weight: 600; font-family: ui-monospace, Menlo, monospace; }
+.review .label { font-weight: 600; font-family: ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
 .reasons { margin: 6px 0 10px; padding-left: 18px; color: var(--warn); font-size: 13px; }
 .cands { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
 .cand { flex: 0 0 116px; border: 2px solid transparent; border-radius: 8px; padding: 4px; cursor: pointer;
@@ -67,6 +76,39 @@ tr:first-child td { border-top: 0; }
        padding: 10px 12px; background: var(--bg); border-radius: 8px; }
 .eps .tl { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); white-space: nowrap; }
 .eps select { width: 100%; min-width: 0; }
+.pill.live { display: none; } .pill.live.off { display: inline; }
+
+/* Touch screens: 16px inputs stop iOS from zooming in on focus; 44px tap targets. */
+@media (pointer: coarse) {
+  input, select, button { font-size: 16px; min-height: 44px; }
+  input[type=number] { width: 84px; }
+  button { padding: 8px 16px; }
+  .cand { padding: 6px; }
+}
+
+/* Phones: one column, stacked rows, full-width text inputs. */
+@media (max-width: 640px) {
+  h1 { flex-basis: 100%; font-size: 19px; }
+  h2 { margin-top: 22px; }
+  .grid { grid-template-columns: 1fr; }
+  .card { padding: 12px; }
+  .review .top { display: block; } .review .top > span { display: block; }
+  .cand { flex-basis: 100px; }
+  .cand img, .cand .noimg { width: 86px; height: 129px; }
+  .eps { grid-template-columns: 1fr; gap: 2px; padding: 8px 10px; }
+  .eps .tl { margin-top: 8px; } .eps .tl:first-child { margin-top: 0; }
+  .row > input:not([type=number]) { flex: 1 1 100% !important; min-width: 0 !important; }
+  .row > button.primary { flex: 1; }
+  .row .hint { flex-basis: 100%; }
+  table, tbody { display: block; width: 100%; }
+  tr { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "st act" "body act";
+       border-top: 1px solid var(--line); padding: 8px 12px; align-items: center; column-gap: 10px; }
+  tr:first-child { border-top: 0; }
+  td { display: block; border: 0; padding: 0; }
+  td.status { grid-area: st; } td.body { grid-area: body; min-width: 0; overflow-wrap: anywhere; }
+  td.actions { grid-area: act; display: flex; flex-direction: column; gap: 6px; }
+  .drv, .paths { display: none; }
+}
 </style>
 </head>
 <body>
@@ -76,6 +118,7 @@ tr:first-child td { border-top: 0; }
     <span class="pill" id="p-llm">LLM</span>
     <span class="pill" id="p-tmdb">TMDB</span>
     <span class="pill" id="p-nas">NAS</span>
+    <span class="pill live" id="p-live">reconnecting…</span>
   </header>
   <div id="banner"></div>
 
@@ -171,7 +214,7 @@ function episodePicker(job, f) {
       S <input type="number" min="0" data-f="season" value="${esc(f.season)}">
       E <input type="number" min="1" data-f="ep" value="${esc(f.ep)}">
       <button data-fill="${job.id}">Fill</button>
-      <span class="muted">— check against the episode list on the disc case</span></div>`;
+      <span class="muted hint">Check against the episode list on the disc case.</span></div>`;
 }
 
 function reviewCard(job) {
@@ -228,9 +271,14 @@ function rerenderCard(id) {
   if (job && el) el.outerHTML = reviewCard(job);
 }
 
+let showAllJobs = false;
+const JOBS_SHOWN = 10;
 function renderJobs() {
-  const jobs = snap.jobs.filter(j => j.status !== "review");
-  if (!jobs.length) { $("#jobs").innerHTML = `<div class="empty-note">No jobs yet.</div>`; return; }
+  const all = snap.jobs.filter(j => j.status !== "review");
+  if (!all.length) { $("#jobs").innerHTML = `<div class="empty-note">No jobs yet.</div>`; return; }
+  const jobs = showAllJobs ? all : all.slice(0, JOBS_SHOWN);
+  const more = all.length > JOBS_SHOWN
+    ? `<div class="row"><button data-alljobs>${showAllJobs ? "Show recent only" : `Show all ${all.length} jobs`}</button></div>` : "";
   $("#jobs").innerHTML = `<table>${jobs.map(j => {
     const f = j.final;
     const eps = f && f.kind === "tv" && f.episodes ? f.episodes.filter(e => !e.skip).map(e => `S${String(e.season).padStart(2,"0")}E${String(e.episode).padStart(2,"0")}`).join(", ")
@@ -238,19 +286,23 @@ function renderJobs() {
     const name = f ? `${esc(f.title)}${f.year ? " (" + f.year + ")" : ""}${eps ? " " + eps : ""}` : "";
     return `<tr>
       <td class="status ${esc(j.status)}">${esc(j.status)}${j.status === "ripping" ? " " + (j.progress*100).toFixed(0) + "%" : ""}</td>
-      <td><b>${esc(j.label)}</b> <span class="muted">· ${esc(j.kind)} · ${esc(j.drive)}</span>
+      <td class="body"><b>${esc(j.label)}</b> <span class="muted">· ${esc(j.kind)}<span class="drv"> · ${esc(j.drive)}</span></span>
         ${name ? `<div>→ ${name}</div>` : ""}
         ${j.outputs.length ? `<div class="paths">${j.outputs.map(esc).join("<br>")}</div>` : ""}
         ${(j.warnings || []).map(w => `<div class="err">⚠ ${esc(w)}</div>`).join("")}
         ${j.error ? `<div class="err">${esc(j.error)}</div>` : ""}</td>
-      <td style="text-align:right;white-space:nowrap">
+      <td class="actions" style="text-align:right;white-space:nowrap">
         ${j.status === "failed" && j.failed_stage !== "ripping" && j.failed_stage !== "picking" ? `<button data-retry="${j.id}">Retry</button>` : ""}
         ${["done","failed"].includes(j.status) ? `<button data-dismiss="${j.id}">Clear</button>` : ""}
-      </td></tr>`;
-  }).join("")}</table>`;
+</td></tr>`;
+  }).join("")}</table>${more}`;
 }
 
 function render() {
+  const active = snap.jobs.filter(j => j.status === "ripping");
+  const waiting = snap.jobs.filter(j => j.status === "review").length;
+  document.title = (waiting ? `(${waiting}) ` : "")
+    + (active.length ? active.map(j => (j.progress * 100).toFixed(0) + "%").join(" · ") + " · " : "") + "Rip Station";
   $("#banner").innerHTML = snap.banner ? `<div class="banner">${esc(snap.banner)}</div>` : "";
   renderDrives(); renderReview(); renderJobs();
 }
@@ -271,6 +323,7 @@ document.addEventListener("keydown", e => {
 
 document.addEventListener("click", async e => {
   const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.alljobs !== undefined) { showAllJobs = !showAllJobs; renderJobs(); return; }
   const showErr = (id, msg) => { const el = $(`[data-review="${id}"] [data-err]`); if (el) el.textContent = msg; };
   if (t.dataset.pick) {
     const f = form[t.dataset.job]; f.sel = Number(t.dataset.pick); f.map = {};
@@ -315,9 +368,28 @@ async function health() {
   } catch {}
 }
 
-const es = new EventSource("/events");
-es.onmessage = e => { snap = JSON.parse(e.data); render(); };
-health(); setInterval(health, 30000);
+// Live updates. Phones suspend background tabs and drop the connection, so reconnect
+// whenever the page comes back into view or the stream has gone quiet (the server sends
+// a keepalive every 15s and a full snapshot on every connect).
+let es = null, lastMsg = 0;
+function connect() {
+  if (es) es.close();
+  es = new EventSource("/events");
+  es.onopen = () => { lastMsg = Date.now(); setLive(true); };
+  es.onmessage = e => { lastMsg = Date.now(); setLive(true); snap = JSON.parse(e.data); render(); };
+  es.addEventListener("ping", () => { lastMsg = Date.now(); setLive(true); });
+  es.onerror = () => setLive(false);
+}
+function setLive(ok) { $("#p-live").className = "pill live " + (ok ? "on" : "off"); }
+function checkLive() {
+  if (document.hidden) return;
+  if (!es || es.readyState === EventSource.CLOSED || Date.now() - lastMsg > 40000) connect();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { checkLive(); health(); } });
+window.addEventListener("pageshow", e => { if (e.persisted) connect(); });
+window.addEventListener("online", connect);
+connect(); health();
+setInterval(health, 30000); setInterval(checkLive, 10000);
 </script>
 </body>
 </html>

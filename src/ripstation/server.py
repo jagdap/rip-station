@@ -77,7 +77,7 @@ def create_app(station: Station) -> FastAPI:
                         snap = await asyncio.wait_for(q.get(), timeout=15)
                         yield f"data: {json.dumps(snap)}\n\n"
                     except asyncio.TimeoutError:
-                        yield ": keepalive\n\n"
+                        yield "event: ping\ndata: \n\n"   # a real event so the page can tell idle from dead
             finally:
                 station.store.unsubscribe(q)
 

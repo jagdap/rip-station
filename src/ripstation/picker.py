@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
+from itertools import combinations
 from statistics import median
 from typing import Literal
 
@@ -68,8 +69,27 @@ def _branch_variants(titles: list[Title]) -> list[Title]:
 
 
 def _is_play_all(t: Title, eps: list[Title]) -> bool:
+    """Is `t` the episodes played back to back? Usually all of them, but some discs have a
+    "play all" of only a few (seen: 3 of 4, the pilot left out). The length must match and,
+    when chapters are known, so must the chapter count, so a movie whose extras happen to
+    add up to its length isn't mistaken for one."""
+    if len(eps) < 2:
+        return False
+
+    def matches(subset, tol: float) -> bool:
+        if abs(t.duration_s - sum(e.duration_s for e in subset)) > tol:
+            return False
+        if t.chapters and all(e.chapters for e in subset):
+            return sum(e.chapters for e in subset) == t.chapters
+        return True
+
     total = sum(e.duration_s for e in eps)
-    return len(eps) >= 2 and abs(t.duration_s - total) <= 0.05 * total
+    if matches(eps, 0.05 * total):
+        return True
+    if len(eps) > 16:   # keep the subset search small
+        return False
+    tol = max(60, 0.01 * t.duration_s)
+    return any(matches(sub, tol) for r in range(2, len(eps)) for sub in combinations(eps, r))
 
 
 def pick(titles: list[Title], cfg: PickerCfg) -> Selection:

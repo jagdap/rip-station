@@ -97,6 +97,25 @@ def test_real_alternate_cut_still_ripped():
     assert sel.title_ids == [0, 1] and sel.needs_review
 
 
+def test_partial_play_all_is_tv():
+    """Real disc (AMERICAN_DREAMS): 4 episodes plus a play-all of only episodes 2-4."""
+    from ripstation.makemkv import Title
+    eps = [(47.5, 4), (44.1, 4), (42.6, 4), (41.6, 4), (128.4, 12)]
+    titles = [Title(id=i, duration_s=round(m * 60), size_bytes=int(m * 4.5e7), chapters=c, segments=str(i))
+              for i, (m, c) in enumerate(eps)]
+    sel = pick(titles, CFG)
+    assert sel.kind == "tv" and sel.title_ids == [0, 1, 2, 3]
+
+
+def test_movie_with_episode_length_extras_stays_movie():
+    from ripstation.makemkv import Title
+    spec = [(128.0, 28), (44.0, 3), (42.5, 2), (41.5, 2)]   # extras add up, chapters don't
+    titles = [Title(id=i, duration_s=round(m * 60), size_bytes=int(m * 4.5e7), chapters=c, segments=str(i))
+              for i, (m, c) in enumerate(spec)]
+    sel = pick(titles, CFG)
+    assert sel.kind == "movie" and sel.title_ids == [0]
+
+
 def test_nas_available_rejects_local_folder(tmp_path):
     from ripstation.finisher import nas_available
     assert not nas_available(tmp_path)          # local disk, e.g. a stale /Volumes/media
